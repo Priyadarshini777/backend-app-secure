@@ -33,6 +33,7 @@ jobs:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.SERVICE_ACCOUNT }}
           audience: "https://token.actions.githubusercontent.com"
+          id_token_audience: "https://token.actions.githubusercontent.com"
           token_format: "id_token"
 
       - name: Configure Docker for Artifact Registry
