@@ -13,7 +13,6 @@ env:
   IMAGE: "backend-api"
 
   WORKLOAD_IDENTITY_PROVIDER: "projects/382207431122/locations/global/workloadIdentityPools/github-ci-pool-priii/providers/github-ci-provider-2"
-
   SERVICE_ACCOUNT: "ci-backend-app@kxnwork.iam.gserviceaccount.com"
 
 jobs:
@@ -33,6 +32,8 @@ jobs:
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.SERVICE_ACCOUNT }}
+          audience: "https://token.actions.githubusercontent.com"
+          token_format: "id_token"
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev --quiet
