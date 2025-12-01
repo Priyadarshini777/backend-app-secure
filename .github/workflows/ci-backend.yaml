@@ -12,7 +12,8 @@ env:
   REPOSITORY: "backend-repo"
   IMAGE: "backend-api"
 
-  WORKLOAD_IDENTITY_PROVIDER: "projects/382207431122/locations/global/workloadIdentityPools/github-ci-pool-priii/providers/github-ci-provider"
+  WORKLOAD_IDENTITY_PROVIDER: "projects/382207431122/locations/global/workloadIdentityPools/github-ci-pool-priii/providers/github-ci-provider-2"
+
   SERVICE_ACCOUNT: "ci-backend-app@kxnwork.iam.gserviceaccount.com"
 
 jobs:
