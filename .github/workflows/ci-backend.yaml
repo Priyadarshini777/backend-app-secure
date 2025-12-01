@@ -6,23 +6,63 @@ on:
   pull_request:
     branches: ["main"]
 
+env:
+  GCP_PROJECT: "kxnwork"
+  GAR_LOCATION: "asia-south1"
+  REPOSITORY: "backend-repo"
+  IMAGE: "backend-api"
+
+  WORKLOAD_IDENTITY_PROVIDER: "projects/382207431122/locations/global/workloadIdentityPools/github-ci-pool-priii/providers/github-ci-provider"
+  SERVICE_ACCOUNT: "ci-backend-app@kxnwork.iam.gserviceaccount.com"
+
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          python-version: "3.11"
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
 
-      - name: Install dependencies
-        run: |
-          pip install -r app/requirements.txt
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev --quiet
 
-      - name: Static test
+      - name: Build Docker image
         run: |
-          echo "CI pipeline working successfully!"
+          docker build -t $GAR_LOCATION-docker.pkg.dev/$GCP_PROJECT/$REPOSITORY/$IMAGE:${{ github.sha }} .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+
+      - name: Push image (main branch only)
+        if: github.event_name == 'push'
+        run: |
+          docker push $GAR_LOCATION-docker.pkg.dev/$GCP_PROJECT/$REPOSITORY/$IMAGE:${{ github.sha }}
+
+      - name: Update Helm image tag
+        if: github.event_name == 'push'
+        run: |
+          sed -i "s/tag: .*/tag: \"${{ github.sha }}\"/" deploy/helm/backend/values-prod.yaml
+
+      - name: Commit updated helm file
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy/helm/backend/values-prod.yaml
+          git commit -m "Update image tag to ${{ github.sha }}" || true
+          git push
